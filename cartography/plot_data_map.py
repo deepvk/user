@@ -1,5 +1,6 @@
 ## https://github.com/alisawuffles/wanli/blob/main/cartography/plot_data_map.py
 
+import click
 from pathlib import Path
 from typing import List
 
@@ -61,11 +62,17 @@ def plot_data_map(
     plot.figure.savefig(filename, dpi=300)
     print(f"Plot saved to {filename}")
 
-
-def main(td_metrics_path: str, title: str):
+@click.command()
+@click.option('--td_metrics_path', type=str)
+@click.option('--title', type=str)
+@click.option('--subset_size', type=int, help='number of samples, default=all_data', default=None)
+def main(td_metrics_path: str, title: str, subset_size: int=None):
+    print(f"{td_metrics_path}/td_metrics.jsonl")
     metrics_df = pd.read_json(f"{td_metrics_path}/td_metrics.jsonl", lines=True)
-    plot_data_map(metrics_df, title=title)
-
+    if subset_size is not None:
+        plot_data_map(metrics_df.sample(subset_size, random_state=42), title=title)
+    else:
+        plot_data_map(metrics_df, title=title)
 
 if __name__ == "__main__":
     main()
