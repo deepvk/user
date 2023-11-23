@@ -1,6 +1,7 @@
+from typing import List, Optional
+
 import click
 import pandas as pd
-from typing import List, Optional
 
 tokenizer = {
     "entailment": 0,

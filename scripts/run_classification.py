@@ -30,6 +30,7 @@ import numpy as np
 from datasets import Value, load_dataset
 
 import transformers
+import wandb
 from transformers import (
     AutoConfig,
     AutoModelForSequenceClassification,
@@ -45,9 +46,6 @@ from transformers import (
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
-
-import wandb
-
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.36.0.dev0")

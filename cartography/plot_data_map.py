@@ -1,9 +1,9 @@
 ## https://github.com/alisawuffles/wanli/blob/main/cartography/plot_data_map.py
 
-import click
 from pathlib import Path
 from typing import List
 
+import click
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
