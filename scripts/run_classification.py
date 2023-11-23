@@ -46,6 +46,8 @@ from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
 
+import wandb
+
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.36.0.dev0")
@@ -185,6 +187,9 @@ class DataTrainingArguments:
     )
     validation_file: Optional[str] = field(
         default=None, metadata={"help": "A csv or a json file containing the validation data."}
+    )
+    test_files: Optional[str] = field(
+        default=None, metadata={"help": "Processed csv files."}
     )
     test_file: Optional[str] = field(default=None, metadata={"help": "A csv or a json file containing the test data."})
 
@@ -341,19 +346,18 @@ def main():
     # Set seed before initializing model.
     set_seed(training_args.seed)
     
-    training_args.load_best_model_at_end = True
-    training_args.metric_for_best_model = "eval_loss"
+    # ADDITION LOGGING
     
-    training_args.save_total_limit = 1
-    strategy = "epoch"
-    training_args.logging_strategy = strategy
-    training_args.evaluation_strategy = strategy
-    training_args.save_strategy = strategy
-                
-#     interval_steps = 1
-#     training_args.save_steps = interval_steps
-#     training_args.logging_steps = interval_steps
-#     training_args.eval_steps = interval_steps
+#     training_args.load_best_model_at_end = True
+#     training_args.metric_for_best_model = "eval_loss"
+    
+#     training_args.save_total_limit = 1
+#     strategy = "epoch"
+#     training_args.logging_strategy = strategy
+#     training_args.evaluation_strategy = strategy
+#     training_args.save_strategy = strategy
+    
+    # END OF ADDITION LOGGING
     
     # Get the datasets: you can either provide your own CSV/JSON training and evaluation files, or specify a dataset name
     # to load from huggingface/datasets. In ether case, you can specify a the key of the column(s) containing the text and
@@ -376,7 +380,18 @@ def main():
         # Loading a dataset from your local files.
         # CSV/JSON training and evaluation files are needed.
         data_files = {"train": data_args.train_file, "validation": data_args.validation_file}
-
+       
+        # ADDITION VALIDATION_DATASETS
+        
+        test_files = {}
+        for key, value in [item.split(':') for item in data_args.test_files.split(',')]:
+            test_files[key] = value
+        
+        for key in test_files:
+            data_files[key] = test_files[key]
+        
+        # END OF ADDITION VALIDATION_DATASETS
+    
         # Get the test dataset: you can provide your own CSV/JSON test file
         if training_args.do_predict:
             if data_args.test_file is not None:
@@ -394,6 +409,7 @@ def main():
 
         if data_args.train_file.endswith(".csv"):
             # Loading a dataset from local csv files
+            print(data_files)
             raw_datasets = load_dataset(
                 "csv",
                 data_files=data_files,
@@ -591,10 +607,11 @@ def main():
         # Tokenize the texts
         result = tokenizer(examples["sentence"], padding=padding, max_length=max_seq_length, truncation=True)
         if label_to_id is not None and "label" in examples:
-            if is_multi_label:
-                result["label"] = [multi_labels_to_ids(l) for l in examples["label"]]
-            else:
-                result["label"] = [(label_to_id[str(l)] if l != -1 else -1) for l in examples["label"]]
+#             if is_multi_label:
+#                 result["label"] = [multi_labels_to_ids(l) for l in examples["label"]]
+#             else:
+#                 result["label"] = [(label_to_id[str(l)] if l != -1 else -1) for l in examples["label"]]
+            result["label"] = examples["label"]
         return result
 
     # Running the preprocessing pipeline on all the datasets
@@ -652,6 +669,7 @@ def main():
             else evaluate.load(data_args.metric_name)
         )
         logger.info(f"Using metric {data_args.metric_name} for evaluation.")
+                
     else:
         if is_regression:
             metric = evaluate.load("mse")
@@ -665,7 +683,7 @@ def main():
             else:
                 metric = evaluate.load("accuracy")
                 logger.info("Using accuracy as classification score, you can use --metric_name to overwrite.")
-
+                
     def compute_metrics(p: EvalPrediction):
         preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
         if is_regression:
@@ -722,13 +740,24 @@ def main():
 
     # Evaluation
     if training_args.do_eval:
-        logger.info("*** Evaluate ***")
-        metrics = trainer.evaluate(eval_dataset=eval_dataset)
-        max_eval_samples = data_args.max_eval_samples if data_args.max_eval_samples is not None else len(eval_dataset)
-        metrics["eval_samples"] = min(max_eval_samples, len(eval_dataset))
-        trainer.log_metrics("eval", metrics)
-        trainer.save_metrics("eval", metrics)
+        all_metrics = {}
+        # ADDITION looking through all provided training files
+        for file in test_files:
+            validation_dataset = raw_datasets[file]
+            logger.info(f"*** Evaluate {file} ***")
+            metrics = trainer.evaluate(eval_dataset=validation_dataset)
+            # ADDITION saving metrics to wandb
+            if 'eval_accuracy' in metrics.keys():
+                all_metrics[f'eval_accuracy_{file}'] = metrics['eval_accuracy']
+            if 'eval_f1_score' in metrics.keys():
+                all_metrics[f'eval_f1_score_{file}'] = metrics['eval_f1_score']
+        
+        trainer.log_metrics(file, all_metrics)
+        trainer.save_metrics(file, all_metrics)
+        wandb.log(all_metrics)
 
+    
+        
     if training_args.do_predict:
         logger.info("*** Predict ***")
         # Removing the `label` columns if exists because it might contains -1 and Trainer won't like that.
