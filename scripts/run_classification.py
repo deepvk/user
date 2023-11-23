@@ -27,10 +27,9 @@ from typing import List, Optional
 import datasets
 import evaluate
 import numpy as np
-from datasets import Value, load_dataset
-
 import transformers
 import wandb
+from datasets import Value, load_dataset
 from transformers import (
     AutoConfig,
     AutoModelForSequenceClassification,
