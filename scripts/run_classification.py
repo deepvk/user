@@ -46,6 +46,8 @@ from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
 
+from datetime import datetime
+
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.36.0.dev0")
 
@@ -151,6 +153,13 @@ class DataTrainingArguments:
     shuffle_seed: int = field(
         default=42, metadata={"help": "Random seed that will be used to shuffle the train dataset."}
     )
+    #learning_rate: int = field(
+    #    default=None
+    #)
+    #warmup_steps: int = field(
+    # 	default=None
+    #)
+    
     max_train_samples: Optional[int] = field(
         default=None,
         metadata={
@@ -325,6 +334,7 @@ def main():
 
     # Detecting last checkpoint.
     last_checkpoint = None
+    training_args.output_dir = "tmp/ru_wanli" + datetime.now().strftime("%d%m%Y%H:%M:%S") + "/"
     if os.path.isdir(training_args.output_dir) and training_args.do_train and not training_args.overwrite_output_dir:
         last_checkpoint = get_last_checkpoint(training_args.output_dir)
         if last_checkpoint is None and len(os.listdir(training_args.output_dir)) > 0:
@@ -380,7 +390,7 @@ def main():
 
         test_files = {}
         for key, value in [item.split(":") for item in data_args.test_files.split(",")]:
-            test_files[key] = value
+            test_files[key.strip()] = value.strip()
 
         for key in test_files:
             data_files[key] = test_files[key]
@@ -594,6 +604,7 @@ def main():
     def preprocess_function(examples):
         if data_args.text_column_names is not None:
             text_column_names = data_args.text_column_names.split(",")
+#             print('text_column_names', text_column_names)
             # join together text columns into "sentence" column
             examples["sentence"] = examples[text_column_names[0]]
             for column in text_column_names[1:]:
@@ -602,11 +613,17 @@ def main():
         # Tokenize the texts
         result = tokenizer(examples["sentence"], padding=padding, max_length=max_seq_length, truncation=True)
         if label_to_id is not None and "label" in examples:
-            #             if is_multi_label:
-            #                 result["label"] = [multi_labels_to_ids(l) for l in examples["label"]]
-            #             else:
-            #                 result["label"] = [(label_to_id[str(l)] if l != -1 else -1) for l in examples["label"]]
-            result["label"] = examples["label"]
+#             text_to_label = {
+#                 '0': 0,
+#                 '1': 1,
+#                 '2': 2,
+#                 'entailment': 0,
+#                 'neutral': 1,
+#                 'contradiction': 2
+#             }
+#             result["label"] = [text_to_label[str(l)] for l in examples["label"]]
+            result['label'] = examples['label']
+      
         return result
 
     # Running the preprocessing pipeline on all the datasets
@@ -690,7 +707,7 @@ def main():
             result = metric.compute(predictions=preds, references=p.label_ids, average="micro")
         else:
             preds = np.argmax(preds, axis=1)
-            result = metric.compute(predictions=preds, references=p.label_ids)
+            result = metric.compute(predictions=preds, references=p.label_ids, average="macro")
         if len(result) > 1:
             result["combined_score"] = np.mean(list(result.values())).item()
         return result
@@ -705,6 +722,7 @@ def main():
         data_collator = None
 
     # Initialize our Trainer
+    print('training_args', training_args)
     trainer = Trainer(
         model=model,
         args=training_args,
@@ -714,6 +732,7 @@ def main():
         tokenizer=tokenizer,
         data_collator=data_collator,
     )
+
 
     # Training
     if training_args.do_train:
@@ -737,16 +756,21 @@ def main():
     if training_args.do_eval:
         all_metrics = {}
         # ADDITION looking through all provided training files
+        mean_f1 = 0
         for file in test_files:
             validation_dataset = raw_datasets[file]
             logger.info(f"*** Evaluate {file} ***")
             metrics = trainer.evaluate(eval_dataset=validation_dataset)
             # ADDITION saving metrics to wandb
-            if "eval_accuracy" in metrics.keys():
-                all_metrics[f"eval_accuracy_{file}"] = metrics["eval_accuracy"]
-            if "eval_f1_score" in metrics.keys():
-                all_metrics[f"eval_f1_score_{file}"] = metrics["eval_f1_score"]
-
+            # if "eval_accuracy" in metrics.keys():
+            #     all_metrics[f"eval_accuracy_{file}"] = metrics["eval_accuracy"]
+            #    mean_accuracy += metrics["eval_accuracy"]
+            print("metrics", metrics)
+            all_metrics[f"eval_f1_{file}"] = metrics["eval_f1"]
+            mean_f1 += metrics["eval_f1"]
+            metrics.pop('eval_f1', None)
+			
+        all_metrics['eval_mean_f1'] = mean_f1 / len(test_files)
         trainer.log_metrics(file, all_metrics)
         trainer.save_metrics(file, all_metrics)
         wandb.log(all_metrics)

@@ -1,0 +1,61 @@
+command:
+  - python
+  - scripts/run_classification.py
+  - --model_name_or_path
+  - deepvk/bert-base-uncased
+  - --train_file
+  - data/train/ru_wanli/train.csv
+  - --validation_file 
+  - "data/validation/ru_wanli/test.csv"
+  - --test_files 
+  - "ru_wanli:data/validation/ru_wanli/test.csv,
+     terra:data/validation/terra/val.csv,
+     rumednli:data/validation/rumednli/test.csv,
+     anli:data/validation/anli/dev.csv,
+     fever_translated:data/validation/fever_translated/train.csv,
+     ling_translated:data/validation/ling_translated/train.csv,
+     mnli:data/validation/mnli/dev.csv,
+     rcb:data/validation/rcb/val.csv,
+     snli:data/validation/snli/dev.csv,
+     wanli_translated:data/validation/wanli_translated/train.csv,
+     xnli:data/validation/xnli/test.csv"
+  - --text_column_names 
+  - 'premise,hypothesis'
+  - --metric_name 
+  - f1
+  - --text_column_delimiter 
+  - «,»
+  - --do_train 
+  - True
+  - --do_eval 
+  - True
+  - --max_seq_length 
+  - 512
+  - --per_device_train_batch_size 
+  - 6
+  - --logging_strategy 
+  - epoch
+  - --evaluation_strategy 
+  - epoch
+  - --save_strategy 
+  - epoch
+  - --save_total_limit 
+  - 3
+  - --metric_for_best_model 
+  - f1
+  - --output_dir 
+  - tmp/ru_wanli
+  - --num_train_epochs
+  - 10
+  - --load_best_model_at_end
+  - True
+  - ${args}
+method: bayes
+metric:
+  goal: maximize
+  name: eval_f1_ru_wanli
+parameters:
+  warmup_steps:
+    values : [500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000]
+  learning_rate:
+    values: [1e-5, 2e-5, 3e-5]
