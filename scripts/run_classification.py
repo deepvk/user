@@ -22,14 +22,16 @@ import random
 import sys
 import warnings
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import List, Optional
 
 import datasets
 import evaluate
 import numpy as np
+from datasets import Value, load_dataset
+
 import transformers
 import wandb
-from datasets import Value, load_dataset
 from transformers import (
     AutoConfig,
     AutoModelForSequenceClassification,
@@ -45,8 +47,6 @@ from transformers import (
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
-
-from datetime import datetime
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.36.0.dev0")
@@ -153,13 +153,13 @@ class DataTrainingArguments:
     shuffle_seed: int = field(
         default=42, metadata={"help": "Random seed that will be used to shuffle the train dataset."}
     )
-    #learning_rate: int = field(
+    # learning_rate: int = field(
     #    default=None
-    #)
-    #warmup_steps: int = field(
+    # )
+    # warmup_steps: int = field(
     # 	default=None
-    #)
-    
+    # )
+
     max_train_samples: Optional[int] = field(
         default=None,
         metadata={
@@ -604,7 +604,7 @@ def main():
     def preprocess_function(examples):
         if data_args.text_column_names is not None:
             text_column_names = data_args.text_column_names.split(",")
-#             print('text_column_names', text_column_names)
+            #             print('text_column_names', text_column_names)
             # join together text columns into "sentence" column
             examples["sentence"] = examples[text_column_names[0]]
             for column in text_column_names[1:]:
@@ -613,17 +613,17 @@ def main():
         # Tokenize the texts
         result = tokenizer(examples["sentence"], padding=padding, max_length=max_seq_length, truncation=True)
         if label_to_id is not None and "label" in examples:
-#             text_to_label = {
-#                 '0': 0,
-#                 '1': 1,
-#                 '2': 2,
-#                 'entailment': 0,
-#                 'neutral': 1,
-#                 'contradiction': 2
-#             }
-#             result["label"] = [text_to_label[str(l)] for l in examples["label"]]
-            result['label'] = examples['label']
-      
+            #             text_to_label = {
+            #                 '0': 0,
+            #                 '1': 1,
+            #                 '2': 2,
+            #                 'entailment': 0,
+            #                 'neutral': 1,
+            #                 'contradiction': 2
+            #             }
+            #             result["label"] = [text_to_label[str(l)] for l in examples["label"]]
+            result["label"] = examples["label"]
+
         return result
 
     # Running the preprocessing pipeline on all the datasets
@@ -722,7 +722,7 @@ def main():
         data_collator = None
 
     # Initialize our Trainer
-    print('training_args', training_args)
+    print("training_args", training_args)
     trainer = Trainer(
         model=model,
         args=training_args,
@@ -732,7 +732,6 @@ def main():
         tokenizer=tokenizer,
         data_collator=data_collator,
     )
-
 
     # Training
     if training_args.do_train:
@@ -768,9 +767,9 @@ def main():
             print("metrics", metrics)
             all_metrics[f"eval_f1_{file}"] = metrics["eval_f1"]
             mean_f1 += metrics["eval_f1"]
-            metrics.pop('eval_f1', None)
-			
-        all_metrics['eval_mean_f1'] = mean_f1 / len(test_files)
+            metrics.pop("eval_f1", None)
+
+        all_metrics["eval_mean_f1"] = mean_f1 / len(test_files)
         trainer.log_metrics(file, all_metrics)
         trainer.save_metrics(file, all_metrics)
         wandb.log(all_metrics)
