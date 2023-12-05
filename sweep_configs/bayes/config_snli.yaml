@@ -15,10 +15,10 @@ command:
      ling_translated:data/validation/ling_translated/train.csv,
      mnli:data/validation/mnli/dev.csv,
      rcb:data/validation/rcb/val.csv,
-     snli:data/validation/snli/dev.csv,
+     snli:data/validation/anli/dev.csv,
      wanli_translated:data/validation/wanli_translated/train.csv,
      xnli:data/validation/xnli/test.csv,
-     anli:data/validation/anli/dev.csv"
+     anli:data/validation/snli/dev.csv"
   - --metric_name 
   - f1
   - --text_column_delimiter 
@@ -42,7 +42,7 @@ command:
   - --metric_for_best_model 
   - f1
   - --output_dir 
-  - tmp/anli
+  - tmp/snli
   - --num_train_epochs
   - 5
   - --load_best_model_at_end
