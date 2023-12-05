@@ -616,13 +616,9 @@ def main(args=None):
         return ids
 
     def preprocess_function(examples):
-        examples["sentence"] = examples["premise"]
-        for i in range(len(examples["sentence"])):
-            examples["sentence"][i] = (
-                "Предпосылка: " + examples["premise"][i] + " Гипотеза: " + examples["hypothesis"][i]
-            )
         # Tokenize the texts
-        result = tokenizer(examples["sentence"], padding=padding, max_length=max_seq_length, truncation=True)
+        result = tokenizer(examples["premise"], examples["hypothesis"], \
+                           padding=padding, max_length=max_seq_length, truncation=True)
         result["label"] = examples["label"]
 
         return result
