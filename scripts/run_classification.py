@@ -16,6 +16,15 @@
 """ Finetuning the library models for text classification."""
 # You can also adapt this script on your own text classification task. Pointers for this are left as comments.
 
+### REMOVE LATER
+
+# import os
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+###
+
+
 import logging
 import os
 import random
@@ -28,9 +37,10 @@ from typing import List, Optional
 import datasets
 import evaluate
 import numpy as np
+from datasets import Value, load_dataset
+
 import transformers
 import wandb
-from datasets import Value, load_dataset
 from transformers import (
     AutoConfig,
     AutoModelForSequenceClassification,
@@ -265,6 +275,10 @@ class ModelArguments:
         default=False,
         metadata={"help": "Will enable to load a pretrained model whose head dimensions are different."},
     )
+    dropout_rate: float = field(
+        default=0.1,
+        metadata={"help": "Initially sets dropout after config initialisation."},
+    )
 
 
 def get_label_list(raw_dataset, split="train") -> List[str]:
@@ -280,18 +294,21 @@ def get_label_list(raw_dataset, split="train") -> List[str]:
     return label_list
 
 
-def main():
+def main(args=None):
     # See all possible arguments in src/transformers/training_args.py
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
 
-    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
-    if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
-        # If we pass only one argument to the script and it's the path to a json file,
-        # let's parse it to get our arguments.
-        model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
+    if args is None:
+        parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
+        if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
+            # If we pass only one argument to the script and it's the path to a json file,
+            # let's parse it to get our arguments.
+            model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
+        else:
+            model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     else:
-        model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+        model_args, data_args, training_args = args
 
     if model_args.use_auth_token is not None:
         warnings.warn(
@@ -325,15 +342,14 @@ def main():
     transformers.utils.logging.enable_explicit_format()
 
     # Log on each process the small summary:
-    logger.warning(
-        f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}, "
-        + f"distributed training: {training_args.parallel_mode.value == 'distributed'}, 16-bits training: {training_args.fp16}"
-    )
-    logger.info(f"Training/evaluation parameters {training_args}")
+    #     logger.warning(
+    #         f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}, "
+    #         + f"distributed training: {training_args.parallel_mode.value == 'distributed'}, 16-bits training: {training_args.fp16}"
+    #     )
+    #     logger.info(f"Training/evaluation parameters {training_args}")
 
     # Detecting last checkpoint.
     last_checkpoint = None
-    training_args.output_dir = "tmp/ru_wanli" + datetime.now().strftime("%d%m%Y%H:%M:%S") + "/"
     if os.path.isdir(training_args.output_dir) and training_args.do_train and not training_args.overwrite_output_dir:
         last_checkpoint = get_last_checkpoint(training_args.output_dir)
         if last_checkpoint is None and len(os.listdir(training_args.output_dir)) > 0:
@@ -349,19 +365,6 @@ def main():
 
     # Set seed before initializing model.
     set_seed(training_args.seed)
-
-    # ADDITION LOGGING
-
-    #     training_args.load_best_model_at_end = True
-    #     training_args.metric_for_best_model = "eval_loss"
-
-    #     training_args.save_total_limit = 1
-    #     strategy = "epoch"
-    #     training_args.logging_strategy = strategy
-    #     training_args.evaluation_strategy = strategy
-    #     training_args.save_strategy = strategy
-
-    # END OF ADDITION LOGGING
 
     # Get the datasets: you can either provide your own CSV/JSON training and evaluation files, or specify a dataset name
     # to load from huggingface/datasets. In ether case, you can specify a the key of the column(s) containing the text and
@@ -428,6 +431,14 @@ def main():
                 cache_dir=model_args.cache_dir,
                 token=model_args.token,
             )
+
+    logger.warning(
+        f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}, "
+        + f"distributed training: {training_args.parallel_mode.value == 'distributed'}, 16-bits training: {training_args.fp16}"
+    )
+    logger.info(f"Training/evaluation parameters {training_args}")
+
+    ###
 
     # See more about loading any type of standard or custom dataset at
     # https://huggingface.co/docs/datasets/loading_datasets.
@@ -532,6 +543,11 @@ def main():
         trust_remote_code=model_args.trust_remote_code,
     )
 
+    ### ADDITION SETTING DROPOUT
+    config.hidden_dropout_prob = model_args.dropout_rate
+    config.attention_probs_dropout_prob = model_args.dropout_rate
+    ###
+
     if is_regression:
         config.problem_type = "regression"
         logger.info("setting problem type to regression")
@@ -601,27 +617,14 @@ def main():
         return ids
 
     def preprocess_function(examples):
-        if data_args.text_column_names is not None:
-            text_column_names = data_args.text_column_names.split(",")
-            #             print('text_column_names', text_column_names)
-            # join together text columns into "sentence" column
-            examples["sentence"] = examples[text_column_names[0]]
-            for column in text_column_names[1:]:
-                for i in range(len(examples[column])):
-                    examples["sentence"][i] += data_args.text_column_delimiter + examples[column][i]
+        examples["sentence"] = examples["premise"]
+        for i in range(len(examples["sentence"])):
+            examples["sentence"][i] = (
+                "Предпосылка: " + examples["premise"][i] + " Гипотеза: " + examples["hypothesis"][i]
+            )
         # Tokenize the texts
         result = tokenizer(examples["sentence"], padding=padding, max_length=max_seq_length, truncation=True)
-        if label_to_id is not None and "label" in examples:
-            #             text_to_label = {
-            #                 '0': 0,
-            #                 '1': 1,
-            #                 '2': 2,
-            #                 'entailment': 0,
-            #                 'neutral': 1,
-            #                 'contradiction': 2
-            #             }
-            #             result["label"] = [text_to_label[str(l)] for l in examples["label"]]
-            result["label"] = examples["label"]
+        result["label"] = examples["label"]
 
         return result
 
