@@ -617,8 +617,9 @@ def main(args=None):
 
     def preprocess_function(examples):
         # Tokenize the texts
-        result = tokenizer(examples["premise"], examples["hypothesis"], \
-                           padding=padding, max_length=max_seq_length, truncation=True)
+        result = tokenizer(
+            examples["premise"], examples["hypothesis"], padding=padding, max_length=max_seq_length, truncation=True
+        )
         result["label"] = examples["label"]
 
         return result
