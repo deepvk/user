@@ -8,7 +8,8 @@ command:
   - --validation_file 
   - "data/validation/ru_wanli/test.csv"
   - --test_files 
-  - "terra:data/validation/terra/val.csv,
+  - "ru_wanli:data/validation/ru_wanli/test.csv,
+     terra:data/validation/terra/val.csv,
      rumednli:data/validation/rumednli/test.csv,
      anli:data/validation/anli/dev.csv,
      fever_translated:data/validation/fever_translated/train.csv,
@@ -17,8 +18,7 @@ command:
      rcb:data/validation/rcb/val.csv,
      snli:data/validation/snli/dev.csv,
      wanli_translated:data/validation/wanli_translated/train.csv,
-     xnli:data/validation/xnli/test.csv,
-     ru_wanli:data/validation/ru_wanli/test.csv"
+     xnli:data/validation/xnli/test.csv"
   - --metric_name 
   - f1
   - --text_column_delimiter 
@@ -54,7 +54,8 @@ metric:
   name: eval_f1
 parameters:
   per_device_train_batch_size:
-    values: [8, 16, 32, 64]
+#     values: [8, 16, 32, 64]
+    values: [6]
   learning_rate:
     values: [1e-4, 5e-5, 1e-5, 5e-6]
   dropout_rate:

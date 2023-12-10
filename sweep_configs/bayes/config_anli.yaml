@@ -8,7 +8,8 @@ command:
   - --validation_file 
   - "data/validation/anli/dev.csv"
   - --test_files 
-  - "ru_wanli:data/validation/ru_wanli/test.csv,
+  - "anli:data/validation/anli/dev.csv,
+     ru_wanli:data/validation/ru_wanli/test.csv,
      terra:data/validation/terra/val.csv,
      rumednli:data/validation/rumednli/test.csv,
      fever_translated:data/validation/fever_translated/train.csv,
@@ -17,8 +18,7 @@ command:
      rcb:data/validation/rcb/val.csv,
      wanli_translated:data/validation/wanli_translated/train.csv,
      xnli:data/validation/xnli/test.csv,
-     snli:data/validation/snli/dev.csv,
-     anli:data/validation/anli/dev.csv"
+     snli:data/validation/snli/dev.csv"
   - --metric_name 
   - f1
   - --text_column_delimiter 
