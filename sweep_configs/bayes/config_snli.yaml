@@ -51,11 +51,15 @@ command:
 method: bayes
 metric:
   goal: maximize
-  name: eval_f1
+  name: eval_f1_snli
 parameters:
   per_device_train_batch_size:
-    values: [8, 16, 32, 64]
+    values: [8, 16, 32]
   learning_rate:
     values: [1e-4, 5e-5, 1e-5, 5e-6]
   dropout_rate:
     values: [0.05, 0.1, 0.2]
+  adam_beta1:
+    values: [0.8, 0.9, 0.99, 0.999]
+  warmup_steps:
+    values: [5000, 10000, 15000]
