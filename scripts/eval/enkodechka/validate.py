@@ -1,5 +1,5 @@
-from encodechka.encodechka_eval import tasks
-from encodechka.encodechka_eval.bert_embedders import embed_bert_both, get_word_vectors_with_bert
+from encodechka_eval import tasks
+from encodechka_eval.bert_embedders import embed_bert_both, get_word_vectors_with_bert
 from transformers import AutoModel, AutoTokenizer
 
 from tqdm.auto import tqdm
