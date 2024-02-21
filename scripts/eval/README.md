@@ -1,3 +1,16 @@
+Для сборки и установки библиотек:
+
+1. `python3 enkodechka/setup.py build`
+2. `python3 enkodechka/setup.py install`
+
+
+Для запуска валидации:
+
+`python3 validate.py --model_path <path to model> --instr`
+
+Параметры:
+- `--model_path` - путь до папки с моделью.
+- `--instr` - валидация с инструкциями. 
 
 
 
